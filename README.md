@@ -1,37 +1,90 @@
-## Plugin Template
+# Steam Family Sharing Source
 
-A plugin template for Millennium providing a basic boilerplate to help get started. You'll need a decent understanding in python, and typescript (superset of javascript)
-<br>
+A Millennium plugin that groups shared Steam games by lender (owner) and keeps owner collections in sync automatically.
 
-## Prerequisites
+## Features
 
-- **[Millennium](https://github.com/SteamClientHomebrew/Millennium)**
+- Detects family-shared game owners and groups games per owner.
+- Creates/updates one collection per owner and syncs app membership automatically.
+- Owner names are fetched from Steam Community profile XML:
+  - `https://steamcommunity.com/profiles/{steam_id}/?xml=1`
+- Owner name cache is persisted to avoid repeated network lookups.
+- Settings page supports:
+  - `Reload Owner Names` (force refresh from Steam web)
+  - Per-owner `Username` override
+  - Collection name template with `{name}` placeholder
 
-## Setting up
+## Name Resolution
 
-```ps1
-git clone https://github.com/SteamClientHomebrew/PluginTemplate
-cd PluginTemplate
-```
+Owner display name priority:
 
-## Building
+1. Manual `Username` override from settings
+2. Steam web name from profile XML (`steamID`)
+3. Last 6 digits of `steam_id` (fallback)
 
-```
+## Collection Naming
+
+Collection names are always auto-generated from a template.
+
+- Template key: `sfs.collectionNameTemplate.v1`
+- Placeholder: `{name}`
+- Example templates:
+  - `{name} Library`
+  - `[Family] {name}`
+
+If `{name}` is missing, it will be appended automatically.
+
+## Requirements
+
+- [Millennium](https://github.com/SteamClientHomebrew/Millennium)
+
+## Development
+
+```powershell
+pnpm install
 pnpm run dev
 ```
 
-Then ensure your plugin template is in your plugins folder.
-`%MILLENNIUM_PATH%/plugins/plugin_template`, and select it from the "Plugins" tab within Steam.
+## Production Build
 
-If you wish to develop your plugin outside of `%MILLENNIUM_PATH%/plugins`, you can create a symbolic link from your development path to the plugins path
+```powershell
+pnpm run build
+```
 
-#### Note:
+Put this plugin folder under your Millennium plugins directory and enable it from Steam -> Plugins.
 
-**MILLENNIUM_PATH** =
+Common `MILLENNIUM_PATH` locations:
 
-- Steam Path (ex: `C:\Program Files (x86)\Steam`) (Windows)
-- `~/.local/share/millennium` (Unix)
+- Windows: Steam install directory (for example `C:\Program Files (x86)\Steam`)
+- Linux: `~/.local/share/millennium`
 
-## Next Steps
+## Settings Page
 
-https://docs.steambrew.app/developers/plugins/learn
+- `Collection Name Template`
+  - Controls generated collection names.
+  - Must contain `{name}` placeholder (auto-fixed if missing).
+- `Reload Owner Names`
+  - Forces owner-name refresh from Steam web.
+  - Then re-syncs and renames collections using current template.
+- Per owner:
+  - `Steam ID` (read-only, copyable)
+  - `Username` (editable)
+  - `Apply` to save and re-sync
+
+## Stored Data
+
+Runtime data file:
+
+- `backend/sfs-data.json`
+
+Main keys (values are JSON strings):
+
+- `sfs.collectionNameBackup.v1`: `steam_id -> current collection name`
+- `sfs.ownerNames.v1`: `steam_id -> cached web owner name`
+- `sfs.ownerNameOverrides.v1`: `steam_id -> manual username`
+- `sfs.collectionNameTemplate.v1`: collection naming template
+
+## Notes
+
+- Sync is triggered while browsing Steam library routes.
+- If backend storage fails, frontend falls back to `localStorage`.
